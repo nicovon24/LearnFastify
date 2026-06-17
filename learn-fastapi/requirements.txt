@@ -1,0 +1,31 @@
+# Core framework
+fastapi==0.111.0
+
+# ASGI server — Uvicorn corre FastAPI de forma async (equivalente a lo que hace Node bajo el capó en Nest)
+uvicorn[standard]==0.30.1
+
+# SQLModel combina Pydantic + SQLAlchemy en una sola clase.
+# Ventaja: el mismo modelo te sirve como tabla de DB Y como esquema de validación Pydantic.
+sqlmodel==0.0.19
+
+# Driver async de PostgreSQL. asyncpg es necesario porque SQLAlchemy en modo async
+# no puede usar el driver psycopg2 síncrono tradicional.
+asyncpg==0.29.0
+
+# Para leer variables de entorno desde un archivo .env (equivalente a @nestjs/config)
+python-dotenv==1.0.1
+
+# pydantic-settings: extiende Pydantic para leer settings desde env vars y .env
+pydantic-settings==2.3.4
+
+# HTTP client async para tests — el pytest de FastAPI recomienda httpx con AsyncClient
+# en vez de TestClient cuando los endpoints son async def
+httpx==0.27.0
+
+# Testing
+pytest==8.2.2
+pytest-asyncio==0.23.7
+pytest-mock==3.14.0
+
+# Driver async de SQLite — usado en tests como alternativa liviana a Postgres
+aiosqlite==0.20.0
