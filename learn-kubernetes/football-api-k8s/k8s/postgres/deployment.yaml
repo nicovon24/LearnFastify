@@ -1,0 +1,68 @@
+# ── Deployment — Postgres ────────────────────────────────────────────────────
+#
+# POR QUÉ Deployment para la DB (y no StatefulSet):
+#   StatefulSet es el recurso correcto para bases de datos en producción —
+#   garantiza orden de arranque, nombres de Pod estables y un PVC por réplica.
+#   Para aprender K8s con una sola réplica, Deployment es más simple y suficiente.
+#   En producción real usarías StatefulSet o un Helm chart de Postgres/CloudNative PG.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-deployment
+  namespace: default
+  labels:
+    app: postgres             # label que usa el Service para encontrar estos Pods
+spec:
+  # Solo 1 réplica — múltiples instancias de Postgres sin clustering
+  # causarían corrupción de datos (escribirían al mismo PVC simultáneamente)
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: postgres           # el Deployment gestiona Pods con este label
+
+  template:
+    metadata:
+      labels:
+        app: postgres         # label que se asigna a cada Pod creado
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine   # alpine = imagen más pequeña (~80MB vs ~350MB)
+          ports:
+            - containerPort: 5432     # documentativo — el Service apunta a este puerto
+
+          # ── Variables de entorno desde el Secret ─────────────────────────
+          # envFrom: inyecta TODAS las keys del Secret como env vars.
+          # Alternativa: env[] con valueFrom.secretKeyRef para keys individuales.
+          envFrom:
+            - secretRef:
+                name: postgres-secret   # nombre del Secret definido en base/secret.yaml
+
+          # ── Volumen — montar el PVC ───────────────────────────────────────
+          volumeMounts:
+            - name: postgres-storage
+              # /var/lib/postgresql/data es donde Postgres guarda sus datos.
+              # Al montar el PVC acá, los datos persisten aunque el Pod muera.
+              mountPath: /var/lib/postgresql/data
+
+          # ── Resource limits ───────────────────────────────────────────────
+          # requests: lo mínimo garantizado para que el Pod arranque.
+          # limits:   el máximo que puede usar antes de ser throttleado (CPU)
+          #           o eliminado por OOMKill (memory).
+          # Sin limits, un Pod puede consumir todos los recursos del nodo.
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu:    "100m"   # 100m = 0.1 CPU (milicores)
+            limits:
+              memory: "256Mi"
+              cpu:    "500m"   # 0.5 CPU máximo
+
+      # ── Volúmenes disponibles para el Pod ────────────────────────────────
+      # Relaciona el nombre "postgres-storage" con el PVC real
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc   # nombre del PVC definido en pvc.yaml

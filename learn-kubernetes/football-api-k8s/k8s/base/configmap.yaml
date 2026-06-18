@@ -1,0 +1,30 @@
+# ── ConfigMap — configuración del backend ────────────────────────────────────
+#
+# POR QUÉ ConfigMap:
+#   ConfigMap guarda configuración no sensible que la app necesita para funcionar.
+#   Al separar la config de la imagen Docker, la MISMA imagen corre en local,
+#   staging y producción — solo cambia el ConfigMap del entorno.
+#   Esto es el principio "12 Factor App" (factor III: config en el entorno).
+#
+# Diferencia con Secret:
+#   ConfigMap → datos que podés ver y commitear sin problema (puertos, URLs, flags)
+#   Secret    → datos que nunca deben ser visibles en texto plano (passwords, tokens)
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: football-api-config
+  namespace: default
+data:
+  # Puerto en el que corre la app dentro del container
+  PORT: "3000"
+
+  # DB_HOST es el nombre del Service de Postgres ("postgres-service").
+  # K8s tiene DNS interno: cada Service se resuelve como:
+  #   <service-name>.<namespace>.svc.cluster.local
+  #   postgres-service.default.svc.cluster.local
+  # Dentro del mismo namespace, alcanza con solo el nombre del Service.
+  DB_HOST: "postgres-service"
+
+  # Nombre de la base de datos (no sensible)
+  DB_NAME: "footballdb"

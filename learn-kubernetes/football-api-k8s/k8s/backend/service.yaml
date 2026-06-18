@@ -1,0 +1,34 @@
+# ── Service NodePort — Football API Backend ───────────────────────────────────
+#
+# POR QUÉ NodePort para el backend (vs ClusterIP para Postgres):
+#   El backend necesita ser accesible desde fuera del cluster para que el Ingress
+#   pueda enrutarle tráfico (y para debugging directo si necesitás).
+#   NodePort expone el Service en un puerto fijo de CADA NODO del cluster.
+#
+# En k3d, el nodePort queda disponible en localhost si configuraste el port mapping
+# al crear el cluster (ver README). Con Ingress, el tráfico entra por el puerto
+# 80/443 del Ingress Controller y él internamente llama a este Service.
+#
+# TIPOS de Service en resumen:
+#   ClusterIP    → solo dentro del cluster (DB, servicios internos)
+#   NodePort     → expone un puerto en el nodo (desarrollo, acceso directo)
+#   LoadBalancer → crea un balanceador externo (cloud providers; en local: k3d/minikube tunnel)
+#   ExternalName → alias DNS a un servicio externo al cluster
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: football-api-service
+  namespace: default
+spec:
+  type: NodePort
+
+  selector:
+    app: football-api   # enruta tráfico a Pods con este label
+
+  ports:
+    - port:       80    # puerto del Service (el que usa el Ingress para llamar aquí)
+      targetPort: 3000  # puerto del container
+      nodePort:   30080 # puerto en el nodo (acceso directo: localhost:30080 si hay port mapping)
+                        # rango válido: 30000-32767
+      protocol: TCP

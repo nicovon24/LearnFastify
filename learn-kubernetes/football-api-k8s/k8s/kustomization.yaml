@@ -1,0 +1,37 @@
+# ── Kustomization — punto de entrada para kubectl apply -k ──────────────────
+#
+# Kustomize es una herramienta integrada en kubectl (desde v1.14) que permite
+# gestionar múltiples manifests sin repetir YAML.
+#
+# VENTAJA sobre kubectl apply -f:
+#   Con archivos sueltos: kubectl apply -f base/ -f postgres/ -f backend/ -f ingress/
+#   Con Kustomize:        kubectl apply -k k8s/
+#
+# Kustomize también permite "patches" para customizar por entorno sin duplicar YAML.
+# Por ejemplo: base/ tiene el Deployment con 1 réplica, y production/ tiene un patch
+# que lo cambia a 5 réplicas — sin copiar todo el YAML.
+#
+# ORDEN IMPORTA: aplicar Secret/ConfigMap antes que los Deployments que los referencian.
+# Kustomize respeta el orden de resources[] al hacer el apply.
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: default
+
+resources:
+  # 1. Base: Secret y ConfigMap — deben existir antes que los Pods los lean
+  - base/secret.yaml
+  - base/configmap.yaml
+
+  # 2. Postgres: PVC, Deployment, Service — en ese orden
+  - postgres/pvc.yaml
+  - postgres/deployment.yaml
+  - postgres/service.yaml
+
+  # 3. Backend: Deployment y Service
+  - backend/deployment.yaml
+  - backend/service.yaml
+
+  # 4. Ingress — último porque depende que el Service del backend exista
+  - ingress/ingress.yaml

@@ -8,6 +8,10 @@ La idea es simple: en vez de hacer tutoriales pasivos, uso IA para generar proye
 
 ## Proyectos
 
+### `learn-kubernetes` — Kubernetes + k3d
+Backend Node/Express + PostgreSQL desplegado en un cluster local con k3d. Cubre los recursos core de K8s: Pods, Deployments, Services (ClusterIP/NodePort), Ingress con ingress-nginx, ConfigMaps, Secrets, PersistentVolumeClaims y liveness/readiness probes.
+- Guía: `KUBERNETES.md`
+
 ### `learn-blockchain` — Solidity + Foundry
 Pool de apuestas on-chain para resultados de partidos de fútbol. Cubre Solidity (storage, payable, mappings, eventos, modifiers), el patrón Checks-Effects-Interactions para prevenir el reentrancy attack, OpenZeppelin (Ownable, ReentrancyGuard), y testing con fuzzing en Foundry.
 - Guía: `BLOCKCHAIN.md`

@@ -1,0 +1,45 @@
+# ── PersistentVolumeClaim — storage para Postgres ────────────────────────────
+#
+# PROBLEMA que resuelve:
+#   Los Pods son efímeros. Si el Pod de Postgres muere y K8s lo recrea,
+#   el filesystem del container se borra. Sin PVC, todos los datos de la
+#   DB desaparecen con el Pod.
+#
+# SOLUCIÓN — PVC (PersistentVolumeClaim):
+#   Un PVC es una "solicitud de storage" al cluster. K8s busca un
+#   PersistentVolume (PV) que cumpla los requisitos y lo "bindea" al PVC.
+#   El volumen existe independientemente del Pod — si el Pod muere y
+#   se recrea, el nuevo Pod monta el mismo volumen con los datos intactos.
+#
+# Analogía con Docker:
+#   Docker: docker run -v /data/postgres:/var/lib/postgresql/data postgres
+#   K8s:    PVC → montado en /var/lib/postgresql/data en el Deployment
+#
+# Sin PVC: Pod muere → nueva imagen vacía → datos perdidos
+# Con PVC: Pod muere → nuevo Pod monta el mismo volumen → datos preservados
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: default
+spec:
+  # accessModes define cómo pueden acceder los Pods al volumen:
+  #   ReadWriteOnce:  un solo nodo puede leer y escribir (adecuado para DB)
+  #   ReadOnlyMany:   múltiples nodos pueden leer (para assets estáticos)
+  #   ReadWriteMany:  múltiples nodos pueden leer y escribir (NFS, etc.)
+  # Para una DB como Postgres, ReadWriteOnce es correcto — solo un Pod escribe.
+  accessModes:
+    - ReadWriteOnce
+
+  resources:
+    requests:
+      # 1Gi es más que suficiente para desarrollo local.
+      # En producción ajustás según el tamaño esperado de la DB.
+      storage: 1Gi
+
+  # storageClassName: en k3d y la mayoría de los clusters locales, "standard"
+  # o "local-path" (k3d default) provisiona el volumen automáticamente.
+  # En producción usarías gp3 (AWS EKS), pd-ssd (GKE), etc.
+  # Comentado para usar el StorageClass por defecto del cluster:
+  # storageClassName: standard

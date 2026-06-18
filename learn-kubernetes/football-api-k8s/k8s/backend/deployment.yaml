@@ -1,0 +1,120 @@
+# ── Deployment — Football API Backend ────────────────────────────────────────
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: football-api-deployment
+  namespace: default
+  labels:
+    app: football-api
+spec:
+  # 2 réplicas: si un Pod cae, el otro sigue sirviendo tráfico mientras K8s
+  # levanta uno nuevo. Con 1 réplica, cualquier restart causa downtime.
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: football-api
+
+  # ── Estrategia de actualización ─────────────────────────────────────────
+  # RollingUpdate (default): K8s actualiza los Pods de a uno, sin downtime.
+  # maxUnavailable: cuántos Pods pueden estar no disponibles durante el update.
+  # maxSurge: cuántos Pods EXTRA puede crear durante el update (por encima de replicas).
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge:       1
+
+  template:
+    metadata:
+      labels:
+        app: football-api
+    spec:
+      containers:
+        - name: football-api
+          # La imagen debe estar disponible en k3d.
+          # Opción 1: cargarla con `k3d image load football-api:latest --cluster football-cluster`
+          # Opción 2: pushearla a Docker Hub como tuusuario/football-api:latest
+          image: football-api:latest
+
+          # imagePullPolicy: Never = usar solo imagen local (no buscar en registry)
+          # Cambiar a Always o IfNotPresent si usás Docker Hub
+          imagePullPolicy: Never
+
+          ports:
+            - containerPort: 3000
+
+          # ── Variables de entorno desde ConfigMap ─────────────────────────
+          # envFrom inyecta todas las keys del ConfigMap como env vars
+          envFrom:
+            - configMapRef:
+                name: football-api-config
+
+          # ── Variables de entorno desde Secret ────────────────────────────
+          # Para las credenciales de DB, usamos env[] individual en vez de envFrom
+          # para ser explícitos sobre qué keys del Secret usa la app
+          env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key:  POSTGRES_USER
+
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key:  POSTGRES_PASSWORD
+
+          # ══════════════════════════════════════════════════════════════════
+          # HEALTH CHECKS — liveness y readiness probes
+          # ══════════════════════════════════════════════════════════════════
+          #
+          # LIVENESS PROBE — ¿el container sigue vivo?
+          #   Si falla N veces consecutivas → K8s REINICIA el container.
+          #   Cuándo usar: para detectar deadlocks o estados de los que la app
+          #   no puede recuperarse sola (loop infinito, memoria corrupta).
+          #   Si no ponés liveness, K8s nunca reinicia el container aunque esté
+          #   bloqueado respondiendo con timeouts.
+          #
+          livenessProbe:
+            httpGet:
+              path: /health     # el endpoint que implementamos en src/index.ts
+              port: 3000
+            initialDelaySeconds: 15   # esperar 15s antes del primer check
+                                      # (la app necesita tiempo para conectarse a la DB)
+            periodSeconds:    15      # chequear cada 15 segundos
+            failureThreshold: 3       # 3 fallos consecutivos → reiniciar
+            timeoutSeconds:   5       # si no responde en 5s → contar como fallo
+
+          # READINESS PROBE — ¿el container está listo para recibir tráfico?
+          #   Si falla → K8s SACA el Pod del Service (no le llega tráfico).
+          #   No reinicia el container, solo lo "aísla" hasta que se recupere.
+          #   Cuándo usar: para esperar que la app cargue datos, caliente cachés,
+          #   o se conecte a la DB antes de recibir requests reales.
+          #
+          # DIFERENCIA CLAVE liveness vs readiness:
+          #   liveness  → ¿está vivo? → si no: REINICIAR
+          #   readiness → ¿está listo? → si no: SACAR DEL BALANCEO (no reiniciar)
+          #
+          # Ejemplo: la app arrancó (liveness = OK) pero la DB todavía no está lista
+          # (readiness = FAIL). K8s no mata el Pod (está vivo), pero tampoco le manda
+          # tráfico hasta que /health confirme que la DB está conectada.
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10   # esperar 10s antes del primer check
+            periodSeconds:    10      # chequear cada 10 segundos
+            failureThreshold: 3
+            successThreshold: 1       # 1 éxito es suficiente para volver al Service
+            timeoutSeconds:   3
+
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu:    "100m"
+            limits:
+              memory: "256Mi"
+              cpu:    "500m"

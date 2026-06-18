@@ -1,0 +1,37 @@
+# ── Service ClusterIP — Postgres ─────────────────────────────────────────────
+#
+# POR QUÉ necesitamos un Service:
+#   Los Pods tienen IPs efímeras — cada vez que un Pod muere y K8s lo recrea,
+#   tiene una IP diferente. El backend no puede hardcodear "conectate a 10.0.0.5".
+#   Un Service da una IP y un nombre DNS FIJO que sobrevive reinicios de Pods.
+#
+# POR QUÉ ClusterIP y no NodePort acá:
+#   ClusterIP: solo accesible dentro del cluster.
+#   NodePort:  expone un puerto en cada nodo → accesible desde fuera del cluster.
+#
+#   Postgres no debe ser accesible desde fuera del cluster.
+#   Solo el backend necesita conectarse a la DB — y el backend corre dentro del cluster.
+#   Exponer la DB con NodePort sería un riesgo de seguridad innecesario.
+#
+# DNS interno de K8s:
+#   Este Service se resuelve como "postgres-service" desde cualquier Pod
+#   en el mismo namespace, o como "postgres-service.default.svc.cluster.local"
+#   desde otros namespaces. Por eso en el ConfigMap pusimos DB_HOST=postgres-service.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service        # nombre DNS interno del cluster
+  namespace: default
+spec:
+  type: ClusterIP               # default — solo accesible dentro del cluster
+
+  # selector: el Service enruta tráfico a Pods que tengan estos labels
+  # Debe coincidir con los labels del template del Deployment de Postgres
+  selector:
+    app: postgres
+
+  ports:
+    - port: 5432                # puerto que expone el Service (al que se conecta el backend)
+      targetPort: 5432          # puerto del container al que redirige
+      protocol: TCP

@@ -1,0 +1,67 @@
+# ── Ingress — enrutamiento HTTP al backend ────────────────────────────────────
+#
+# POR QUÉ Ingress en vez de exponer el Service directamente:
+#
+# Sin Ingress, para cada Service que quieras exponer al exterior necesitarías:
+#   - Un LoadBalancer → en cloud crea un balanceador externo (caro y lento)
+#   - Un NodePort → expone un puerto distinto por app (puerto 30080, 30081, etc.)
+#
+# Con Ingress:
+#   - Un solo punto de entrada (puerto 80/443) para TODAS las apps del cluster
+#   - Enrutamiento por path o dominio: /api → backend, / → frontend
+#   - Termination SSL centralizada en el Ingress Controller
+#   - Equivalente a un nginx o un API Gateway en front del cluster
+#
+# El Ingress Controller (ingress-nginx) es un Pod que corre en el cluster
+# y que entiende los recursos Ingress para configurarse dinámicamente.
+# Se activa al crear el cluster con k3d: `--k3s-arg "--disable=traefik@server:0"`
+# + la instalación de ingress-nginx via helm o manifest.
+#
+# FLUJO de una request:
+#   curl http://localhost/api/players
+#     → Ingress Controller (nginx) en puerto 80
+#     → regla: /api → football-api-service:80
+#     → Service → uno de los Pods del backend
+#     → respuesta
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: football-api-ingress
+  namespace: default
+  annotations:
+    # Le dice al Ingress Controller que use la clase nginx
+    kubernetes.io/ingress.class: nginx
+
+    # Rewrite: /api/players → /api/players (sin strip del prefijo)
+    # Si quisieras que /api/players llegue como /players al backend, usarías:
+    # nginx.ingress.kubernetes.io/rewrite-target: /$1
+    # y el path sería /api/(.*)
+    nginx.ingress.kubernetes.io/use-regex: "true"
+
+spec:
+  # ingressClassName selecciona qué Ingress Controller maneja este recurso.
+  # En clusters con múltiples controllers (nginx + traefik), esto es importante.
+  ingressClassName: nginx
+
+  rules:
+    - host: ""    # sin host = acepta cualquier hostname (localhost, IP, etc.)
+                  # En producción pondrías tu dominio: api.tuapp.com
+      http:
+        paths:
+          - path: /api(/|$)(.*)   # enruta /api y cualquier sub-path (/api/players, etc.)
+            pathType: Prefix      # ImplementationSpecific para regex; Prefix para strings exactas
+
+            backend:
+              service:
+                name: football-api-service  # nombre del Service del backend
+                port:
+                  number: 80                # puerto del Service (no del container)
+
+          - path: /health         # exponer /health directamente para debugging
+            pathType: Prefix
+            backend:
+              service:
+                name: football-api-service
+                port:
+                  number: 80
