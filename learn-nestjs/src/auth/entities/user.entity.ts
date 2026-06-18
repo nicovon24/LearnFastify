@@ -1,7 +1,7 @@
 /**
  * USER ENTITY
  *
- * ¿Qué es una Entity en TypeORM?
+ * ¿Qué e+s una Entity en TypeORM?
  * Una clase decorada con @Entity() que TypeORM mapea a una tabla de la DB.
  * Cada propiedad decorada con @Column() se convierte en una columna.
  *
@@ -18,7 +18,6 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';

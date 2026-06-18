@@ -1,0 +1,52 @@
+# docker-compose.floci.yml — Levanta Floci (emulador local de AWS)
+#
+# Floci emula los servicios de AWS en tu máquina sin cuenta de AWS.
+# Expone todos los servicios en http://localhost:4566 (mismo puerto que LocalStack).
+# Tu AWS CLI y el SDK de AWS le pegan ahí cuando seteás AWS_ENDPOINT_URL.
+#
+# PARA LEVANTAR: npm run floci:up (o docker compose -f docker-compose.floci.yml up -d)
+# PARA VER LOGS: npm run floci:logs
+# PARA BAJAR: npm run floci:down
+
+services:
+  floci:
+    image: floci/floci:latest
+    container_name: floci-local
+    ports:
+      # 4566: el puerto estándar donde Floci expone todos los servicios.
+      # Lambda, DynamoDB, API Gateway, Cognito, SNS, CloudWatch — todos en el mismo puerto.
+      # El servicio se diferencia por el path o el header Host del request.
+      - "4566:4566"
+    environment:
+      # SERVICES: qué servicios de AWS emular.
+      # "lambda,dynamodb,apigateway,cognito-idp,sns,cloudwatch,logs,cloudformation,sts,iam"
+      # Cuantos menos servicios, más rápido arranca y menos RAM usa.
+      - SERVICES=lambda,dynamodb,apigateway,cognito-idp,sns,cloudwatch,logs,cloudformation,sts,iam
+      # DEBUG: nivel de logging de Floci
+      - DEBUG=1
+      # LAMBDA_EXECUTOR: cómo ejecutar las Lambdas.
+      #   "docker": cada Lambda corre en su propio container Docker (comportamiento real)
+      #   "local": más rápido pero menos fiel al runtime real de AWS
+      - LAMBDA_EXECUTOR=docker
+      # DOCKER_HOST: para que Floci pueda crear containers de Lambda,
+      # necesita acceso al socket de Docker del host.
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      # Montar el socket de Docker para que Floci pueda crear containers para Lambda.
+      # Sin esto, las Lambdas corren en modo "local" (menos fiel al runtime real).
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Volumen para persistir el estado de Floci entre reinicios.
+      # Sin esto, cada "docker compose up" arranca con estado vacío.
+      - floci-data:/var/lib/floci
+    healthcheck:
+      # curl al health endpoint de Floci — confirma que está listo para recibir requests
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_floci/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+volumes:
+  floci-data:
+    # Volumen nombrado de Docker — los datos persisten aunque el container se reinicie.
+    # Para empezar desde cero: "docker volume rm prodeazo-predictions-api_floci-data"

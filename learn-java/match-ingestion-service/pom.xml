@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  pom.xml — Project Object Model: el "package.json" de Maven.
+
+  POR QUÉ Maven (y no Gradle):
+    Maven es más verbose pero más explícito — perfecto para aprender. Cada
+    dependencia se declara con groupId:artifactId:version (similar a "org:package@version"
+    en npm). Gradle es más conciso, pero Maven es más común en proyectos legacy corporativos.
+
+  ESTRUCTURA:
+    <parent>: hereda configuración de spring-boot-starter-parent, que ya incluye
+              versiones de todas las librerías de Spring compatibles entre sí.
+              Te salva de tener que coordinar versiones manualmente.
+    <dependencies>: las librerías que necesita el proyecto.
+    <build>: cómo se compila y empaqueta. spring-boot-maven-plugin genera un
+             "fat JAR" que incluye todas las dependencias — podés ejecutarlo
+             directamente con "java -jar".
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+      spring-boot-starter-parent: el "parent POM" de Spring Boot.
+      Al heredar de este POM, obtenemos:
+        - Versiones coordinadas de todas las dependencias de Spring
+        - Configuración de encoding UTF-8
+        - Configuración del compilador Java
+        - Plugin de Maven para empaquetar como fat JAR
+    -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.5</version>
+        <relativePath/>
+    </parent>
+
+    <!-- Identificadores del proyecto — equivalente a "name" en package.json -->
+    <groupId>com.scout</groupId>
+    <artifactId>match-ingestion-service</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>match-ingestion-service</name>
+    <description>Servicio de ingesta de eventos de partidos — publica en Kafka</description>
+
+    <properties>
+        <!-- Le decimos al compilador que usamos Java 17 -->
+        <java.version>17</java.version>
+    </properties>
+
+    <dependencies>
+        <!--
+          spring-boot-starter-web: incluye Spring MVC + Tomcat embebido.
+          Equivalente a instalar express + http server en Node.
+          Con esto tenés un servidor HTTP funcionando sin configurar nada extra.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!--
+          spring-boot-starter-validation: Bean Validation (JSR-380).
+          Permite anotar campos de DTOs con @NotNull, @Size, @Min, etc.
+          Equivalente a class-validator en NestJS.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!--
+          spring-kafka: integración de Spring con Apache Kafka.
+          Incluye KafkaTemplate (producer) y @KafkaListener (consumer).
+          Sin esta dependencia, tendrías que usar el cliente Java de Kafka a bajo nivel.
+        -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
+        <!--
+          jackson-databind: serialización/deserialización de Java ↔ JSON.
+          Spring lo usa automáticamente en los controllers para convertir
+          objetos Java a JSON (response) y JSON a objetos Java (request body).
+          Equivalente al manejo automático de JSON en Express/Nest.
+        -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- DEPENDENCIAS DE TEST -->
+
+        <!--
+          spring-boot-starter-test: incluye JUnit 5 + Mockito + AssertJ + más.
+          <scope>test</scope> significa que esta dependencia solo existe en tests,
+          no en el JAR final — equivalente a devDependencies en npm.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!--
+          spring-kafka-test: utilidades para testear con Kafka sin un broker real.
+          Incluye EmbeddedKafka — un broker de Kafka en memoria para tests.
+        -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!--
+              spring-boot-maven-plugin: el plugin que genera el "fat JAR".
+              Al correr "mvn package", crea un JAR que incluye todas las
+              dependencias adentro — se puede ejecutar con "java -jar".
+              No hay que instalar nada más en el servidor para correrlo.
+            -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

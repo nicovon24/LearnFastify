@@ -1,0 +1,54 @@
+# application.yml — Configuración del match-ingestion-service
+#
+# POR QUÉ YAML en vez de .properties:
+#   application.properties es el formato clásico: "spring.kafka.bootstrap-servers=localhost:9092"
+#   YAML es más legible para configuraciones anidadas. Spring soporta ambos.
+#   Usamos YAML porque es más parecido a los archivos de configuración modernos.
+#
+# POR QUÉ spring.profiles.active en un archivo separado:
+#   En producción, estas configuraciones vendrían de variables de entorno
+#   (Docker, Kubernetes). Acá las hardcodeamos para desarrollo local.
+
+server:
+  port: 8080  # Puerto donde corre el servidor HTTP embebido (Tomcat)
+
+spring:
+  application:
+    name: match-ingestion-service  # Nombre del servicio — útil para logging y service discovery
+
+  kafka:
+    # bootstrap-servers: dirección del broker de Kafka.
+    # En Docker Compose, "kafka:29092" es el hostname del container de Kafka.
+    # Para desarrollo local sin Docker: "localhost:9092"
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:29092}
+    # ${VAR:default} = leer la env var VAR, o usar "default" si no está definida.
+    # Esto es equivalente a process.env.VAR || 'default' en Node.
+
+    producer:
+      # key-serializer y value-serializer: cómo convertir la key/value a bytes.
+      # StringSerializer convierte un String Java a bytes UTF-8.
+      # Si quisiéramos enviar objetos Java directamente, usaríamos JsonSerializer,
+      # pero para aprender usamos String para que el JSON sea visible como texto.
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+      # acks=all: el producer espera confirmación de TODOS los réplicas de Kafka
+      # antes de considerar el mensaje "enviado". Es la configuración más
+      # segura (menos pérdida de datos), pero más lenta.
+      # acks=1 (default): solo espera al líder de la partición.
+      # acks=0: fire and forget — más rápido pero puede perder mensajes.
+      acks: all
+
+      # retries: cuántas veces reintentar si el broker no responde.
+      retries: 3
+
+# Propiedades custom de nuestra aplicación
+kafka:
+  topic:
+    match-events: match-events  # Nombre del topic donde se publican los eventos
+
+# Configuración de logging
+logging:
+  level:
+    com.scout: DEBUG           # Nuestro código: nivel DEBUG para ver todo
+    org.springframework.kafka: INFO  # Kafka: solo INFO para no saturar los logs

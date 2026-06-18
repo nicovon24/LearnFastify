@@ -1,0 +1,30 @@
+# Node.js
+node_modules/
+npm-debug.log*
+
+# AWS CDK
+cdk.out/
+*.d.ts
+*.js
+!jest.config.js
+
+# Next.js / TypeScript build
+dist/
+.next/
+out/
+
+# Environment (NUNCA subir keys de AWS)
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# CDK context (puede contener account IDs)
+cdk.context.json

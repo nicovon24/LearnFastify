@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  pom.xml del stats-aggregator-service.
+  Diferencias vs el ingestion service:
+    + spring-boot-starter-data-jpa: Spring Data JPA para persistencia en Postgres
+    + postgresql: driver JDBC para conectarse a Postgres
+  Las demás dependencias son iguales.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.5</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.scout</groupId>
+    <artifactId>stats-aggregator-service</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>stats-aggregator-service</name>
+    <description>Servicio de agregación de estadísticas — consume de Kafka y persiste en Postgres</description>
+
+    <properties>
+        <java.version>17</java.version>
+    </properties>
+
+    <dependencies>
+        <!-- REST API para exponer endpoints de consulta -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!--
+          spring-boot-starter-data-jpa: Spring Data JPA.
+          Incluye Hibernate (el ORM que implementa JPA) + Spring Data repositories.
+
+          JPA (Jakarta Persistence API) es el estándar de Java para mapeo
+          objeto-relacional (ORM). Hibernate es la implementación más usada.
+
+          Spring Data JPA agrega una capa encima de JPA que genera automáticamente
+          queries SQL a partir del nombre de los métodos:
+            findByPlayerId(String id) → SELECT * FROM ... WHERE player_id = ?
+          Sin escribir SQL ni HQL.
+
+          COMPARACIÓN:
+            Prisma/Drizzle (Node): schema en archivo separado, client generado
+            Hibernate/JPA (Java):  anotaciones en la clase de la entidad
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!--
+          postgresql: el driver JDBC de PostgreSQL.
+          JDBC (Java Database Connectivity) es la API estándar de Java para
+          conectarse a bases de datos relacionales. Es el equivalente a pg (node-postgres).
+          Hibernate lo usa internamente para ejecutar los SQL generados.
+        -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+            <!--
+              <scope>runtime</scope>: esta dependencia no se necesita para compilar
+              (el código usa la interfaz JDBC, no clases de PostgreSQL directamente),
+              solo para ejecutar. Es una optimización del classpath.
+            -->
+        </dependency>
+
+        <!-- Kafka consumer -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
+        <!-- JSON -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- Validación Bean Validation -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Tests -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!--
+          h2: base de datos en memoria para tests.
+          En los tests unitarios no queremos conectarnos a Postgres real.
+          H2 es una DB Java pura que arranca en memoria — Spring Boot la detecta
+          automáticamente cuando está en el classpath de tests y la usa como
+          reemplazo de Postgres. Equivalente a usar SQLite in-memory en tests de Node.
+        -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

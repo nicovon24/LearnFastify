@@ -1,0 +1,75 @@
+# application.yml — Configuración del stats-aggregator-service
+
+server:
+  port: 8081  # Puerto diferente al ingestion service (8080) para correr en la misma máquina
+
+spring:
+  application:
+    name: stats-aggregator-service
+
+  # ── Configuración de la base de datos ──────────────────────────────────────
+  datasource:
+    # URL de conexión JDBC: jdbc:postgresql://<host>:<port>/<database>
+    # En Docker Compose, "postgres-aggregator" es el hostname del container.
+    url: jdbc:postgresql://${POSTGRES_HOST:postgres-aggregator}:5432/${POSTGRES_DB:statsdb}
+    username: ${POSTGRES_USER:scout}
+    password: ${POSTGRES_PASSWORD:scout123}
+    # driver-class-name: Spring puede detectarlo automáticamente de la URL,
+    # pero ser explícito es más claro.
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    # ddl-auto: qué hacer con el schema de la DB al arrancar.
+    #   create: borra y recrea las tablas en cada arranque (solo para desarrollo)
+    #   update: actualiza el schema sin borrar datos (útil en dev)
+    #   validate: solo valida que el schema coincida con las entidades (producción)
+    #   none: no hace nada (producción con migrations manuales como Flyway/Liquibase)
+    #
+    # POR QUÉ update para aprender:
+    #   "update" crea las tablas si no existen y agrega columnas nuevas.
+    #   No requiere correr migrations manualmente. Perfecto para aprender.
+    #   En producción usaríamos Flyway o Liquibase para migrations versionadas.
+    hibernate:
+      ddl-auto: update
+
+    # show-sql: imprime el SQL generado por Hibernate en los logs.
+    # MUY útil para aprender — podés ver exactamente qué SQL ejecuta JPA.
+    show-sql: true
+
+    # format_sql: formatea el SQL para que sea legible (indentado).
+    properties:
+      hibernate:
+        format_sql: true
+
+    # open-in-view: false es la configuración recomendada para APIs REST.
+    # Con true (default), la sesión de Hibernate se mantiene abierta durante
+    # todo el request HTTP (incluso después de que el controller devuelve).
+    # Esto puede causar lazy loading inesperado y es considerado un anti-patrón.
+    open-in-view: false
+
+  # ── Configuración de Kafka (el consumidor) ─────────────────────────────────
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:29092}
+    consumer:
+      # group-id: identificador del consumer group.
+      # Todos los consumers con el mismo group-id comparten la carga del topic.
+      group-id: stats-aggregator
+
+      # auto-offset-reset: qué hacer cuando el consumer group no tiene offset guardado.
+      # "earliest" = leer desde el principio del topic (no perderse mensajes anteriores)
+      # "latest" = solo leer mensajes nuevos (ignorar historial)
+      auto-offset-reset: earliest
+
+      # enable-auto-commit: false porque usamos acknowledgment manual (at-least-once).
+      enable-auto-commit: false
+
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+# Logging
+logging:
+  level:
+    com.scout: DEBUG
+    org.springframework.kafka: INFO
+    org.hibernate.SQL: DEBUG           # Para ver el SQL que genera Hibernate
+    org.hibernate.type: TRACE          # Para ver los parámetros de los queries
